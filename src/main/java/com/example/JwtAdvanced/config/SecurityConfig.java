@@ -1,8 +1,10 @@
 package com.example.JwtAdvanced.config;
 
+import com.example.JwtAdvanced.jwt.CustomLogoutFilter;
 import com.example.JwtAdvanced.jwt.JWTFilter;
 import com.example.JwtAdvanced.jwt.JWTUtil;
 import com.example.JwtAdvanced.jwt.LoginFilter;
+import com.example.JwtAdvanced.repository.RefreshRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -14,6 +16,7 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.authentication.logout.LogoutFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 
@@ -31,10 +34,12 @@ public class SecurityConfig {
 
     private final AuthenticationConfiguration authenticationConfiguration;
     private final JWTUtil jwtUtil;
+    private final RefreshRepository refreshRepository;
 
-    public SecurityConfig(AuthenticationConfiguration authenticationConfiguration, JWTUtil jwtUtil) {
+    public SecurityConfig(AuthenticationConfiguration authenticationConfiguration, JWTUtil jwtUtil, RefreshRepository refreshRepository) {
         this.authenticationConfiguration = authenticationConfiguration;
         this.jwtUtil = jwtUtil;
+        this.refreshRepository = refreshRepository;
     }
 
     //AuthenticationManager Bean 등록
@@ -79,10 +84,13 @@ public class SecurityConfig {
         http
                 .httpBasic((auth) -> auth.disable());
 
+        http
+                .logout((auth) -> auth.disable());
+
         //경로별 인가 작업
         http
                 .authorizeHttpRequests((auth) -> auth
-                        .requestMatchers("/login", "/", "/join").permitAll() //로그인 안해도 가능
+                        .requestMatchers("/login", "/", "/join", "/reissue").permitAll() //로그인 안해도 가능
                         .requestMatchers("/admin").hasRole("ADMIN") //권한이 admin이어야 가능
                         .anyRequest().authenticated()); //나머지는 로그인 한 사용자만 접근 가능
 
@@ -92,7 +100,11 @@ public class SecurityConfig {
         
         //UsernamePasswordAuthentication 필터 역할을 하는 필터를 만든 후 등록하는 것이므로 얘를 대체해 등록하기 위해 addFilterAt
         http
-                .addFilterAt(new LoginFilter(authenticationManager(authenticationConfiguration), jwtUtil), UsernamePasswordAuthenticationFilter.class);
+                .addFilterAt(new LoginFilter(authenticationManager(authenticationConfiguration), jwtUtil, refreshRepository), UsernamePasswordAuthenticationFilter.class);
+
+        http
+                .addFilterBefore(new CustomLogoutFilter(jwtUtil, refreshRepository), LogoutFilter.class);
+
 
         //세션 설정 (jwt에서는 state를 stateless 상태로 관리해야함)
         http
