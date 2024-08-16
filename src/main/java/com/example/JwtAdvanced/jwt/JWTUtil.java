@@ -40,6 +40,11 @@ public class JWTUtil {
         return Jwts.parser().verifyWith(secretKey).build().parseSignedClaims(token).getPayload().getExpiration().before(new Date());
     }
 
+    //user_id 얻기 위해 내가 추가
+    public Long getUserId(String token){
+        return Jwts.parser().verifyWith(secretKey).build().parseSignedClaims(token).getPayload().get("user_id", Long.class);
+    }
+
     //토큰 생성(로그인 성공시)
     public String createJwt(String category, String username, String role, Long userId,Long expiredMs){
         return Jwts.builder()
