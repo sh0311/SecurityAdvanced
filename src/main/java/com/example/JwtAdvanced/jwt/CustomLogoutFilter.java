@@ -1,6 +1,9 @@
 package com.example.JwtAdvanced.jwt;
 
+import com.example.JwtAdvanced.entity.Refresh;
+import com.example.JwtAdvanced.redis.RefreshToken;
 import com.example.JwtAdvanced.repository.RefreshRepository;
+import com.example.JwtAdvanced.repository.RefreshTokenRepository;
 import io.jsonwebtoken.ExpiredJwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -9,6 +12,7 @@ import jakarta.servlet.ServletResponse;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.filter.GenericFilterBean;
 
 import java.io.IOException;
@@ -16,10 +20,11 @@ import java.io.IOException;
 public class CustomLogoutFilter extends GenericFilterBean {
 
     private final JWTUtil jwtUtil;
-    private final RefreshRepository refreshRepository;
-    public CustomLogoutFilter(JWTUtil jwtUtil, RefreshRepository refreshRepository) {
+    //private final RefreshRepository refreshRepository;
+    private final RefreshTokenRepository refreshTokenRepository;
+    public CustomLogoutFilter(JWTUtil jwtUtil, RefreshTokenRepository refreshTokenRepository) {
         this.jwtUtil = jwtUtil;
-        this.refreshRepository = refreshRepository;
+        this.refreshTokenRepository = refreshTokenRepository;
     }
 
 
@@ -59,12 +64,16 @@ public class CustomLogoutFilter extends GenericFilterBean {
             return ;
         }
 
-        //refresh 토큰이 만료되었는지 체크
+        //refresh 토큰 데이터베이스에 저장여부 체크
+        RefreshToken refreshToken=refreshTokenRepository.findById(refresh).orElse(null);
+        if(refreshToken==null){
+            return;
+        }
+        //refresh 토큰 만료 여부 체크
         try{
             jwtUtil.isExpired(refresh);
         }catch(ExpiredJwtException e){
-        response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-        return;
+            return;
         }
 
         //토큰이 refresh인지 확인 (발급시 페이로드에 명시해놓음)
@@ -76,7 +85,7 @@ public class CustomLogoutFilter extends GenericFilterBean {
 
         //로그아웃 진행
         //Refresh 토큰 DB에서 제거
-        refreshRepository.deleteByRefresh(refresh);
+        refreshTokenRepository.delete(refreshToken);
 
         //refresh 토큰 cookie값 null로 채워주기
         Cookie cookie=new Cookie("refresh", null);

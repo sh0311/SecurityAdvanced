@@ -5,6 +5,7 @@ import com.example.JwtAdvanced.jwt.JWTFilter;
 import com.example.JwtAdvanced.jwt.JWTUtil;
 import com.example.JwtAdvanced.jwt.LoginFilter;
 import com.example.JwtAdvanced.repository.RefreshRepository;
+import com.example.JwtAdvanced.repository.RefreshTokenRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -34,12 +35,14 @@ public class SecurityConfig {
 
     private final AuthenticationConfiguration authenticationConfiguration;
     private final JWTUtil jwtUtil;
-    private final RefreshRepository refreshRepository;
+    //private final RefreshRepository refreshRepository;
+    private final RefreshTokenRepository refreshTokenRepository;
 
-    public SecurityConfig(AuthenticationConfiguration authenticationConfiguration, JWTUtil jwtUtil, RefreshRepository refreshRepository) {
+    public SecurityConfig(AuthenticationConfiguration authenticationConfiguration, JWTUtil jwtUtil, RefreshTokenRepository refreshTokenRepository) {
         this.authenticationConfiguration = authenticationConfiguration;
         this.jwtUtil = jwtUtil;
-        this.refreshRepository = refreshRepository;
+        //this.refreshRepository = refreshRepository;
+        this.refreshTokenRepository=refreshTokenRepository;
     }
 
     //AuthenticationManager Bean 등록
@@ -100,10 +103,11 @@ public class SecurityConfig {
         
         //UsernamePasswordAuthentication 필터 역할을 하는 필터를 만든 후 등록하는 것이므로 얘를 대체해 등록하기 위해 addFilterAt
         http
-                .addFilterAt(new LoginFilter(authenticationManager(authenticationConfiguration), jwtUtil, refreshRepository), UsernamePasswordAuthenticationFilter.class);
+                .addFilterAt(new LoginFilter(authenticationManager(authenticationConfiguration), jwtUtil, refreshTokenRepository), UsernamePasswordAuthenticationFilter.class);
+
 
         http
-                .addFilterBefore(new CustomLogoutFilter(jwtUtil, refreshRepository), LogoutFilter.class);
+                .addFilterBefore(new CustomLogoutFilter(jwtUtil, refreshTokenRepository), LogoutFilter.class);
 
 
         //세션 설정 (jwt에서는 state를 stateless 상태로 관리해야함)

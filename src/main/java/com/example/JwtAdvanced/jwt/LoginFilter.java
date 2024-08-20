@@ -3,7 +3,9 @@ package com.example.JwtAdvanced.jwt;
 import com.example.JwtAdvanced.dto.CustomUserDetails;
 import com.example.JwtAdvanced.entity.Refresh;
 import com.example.JwtAdvanced.entity.User;
+import com.example.JwtAdvanced.redis.RefreshToken;
 import com.example.JwtAdvanced.repository.RefreshRepository;
+import com.example.JwtAdvanced.repository.RefreshTokenRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.http.Cookie;
@@ -15,6 +17,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 import java.io.IOException;
@@ -28,12 +31,14 @@ import java.util.Iterator;
 public class LoginFilter extends UsernamePasswordAuthenticationFilter {
     private final AuthenticationManager authenticationManager;
     private final JWTUtil jwtUtil;
-    private final RefreshRepository refreshRepository;
+    //private final RefreshRepository refreshRepository;
+    private final RefreshTokenRepository refreshTokenRepository;
 
-    public LoginFilter(AuthenticationManager authenticationManager, JWTUtil jwtUtil, RefreshRepository refreshRepository) {
+    public LoginFilter(AuthenticationManager authenticationManager, JWTUtil jwtUtil, RefreshTokenRepository refreshTokenRepository) {
         this.authenticationManager = authenticationManager;
         this.jwtUtil = jwtUtil;
-        this.refreshRepository = refreshRepository;
+        //this.refreshRepository = refreshRepository;
+        this.refreshTokenRepository=refreshTokenRepository;
     }
 
     @Override
@@ -48,8 +53,8 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
 
             System.out.println("유저네임: " + username);
             //스프링 시큐리티에서 username과 password를 검증하기 위해서는 token에 담아야 함
-            UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(username, password, null);
-
+            UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(username, password);
+            SecurityContextHolder.getContext().setAuthentication(authToken);
             return authenticationManager.authenticate(authToken);
 
         } catch (AuthenticationException e) {
@@ -77,13 +82,23 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
        String role=auth.getAuthority();
 
 
-
        //토큰 생성
         String access=jwtUtil.createJwt("access", username, role, userId,600000L);
         String refresh=jwtUtil.createJwt("refresh", username, role, userId,86400000L);
-        
+
+
+
+        //redis RefreshToken 생성
+        RefreshToken redis=new RefreshToken(refresh, userId);
+        System.out.println("userID :"+userId);
+        //RedisRepository에 RefreshToken 저장
+        refreshTokenRepository.save(redis);
+
+
+        /*
         //refresh 토큰 저장
         addRefreshEntity(username, userId, refresh, 86400000L);
+        */
 
         //응답 설정
         response.setHeader("access", access);
@@ -112,7 +127,8 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
         return cookie;
 
     }
-    
+
+    /*
     private void addRefreshEntity(String username, Long userId, String refresh, Long expiredMs){
         Date date=new Date(System.currentTimeMillis()+expiredMs);
         
@@ -124,6 +140,6 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
         
         refreshRepository.save(refreshEntity);
     }
-
+    */
 
 }
