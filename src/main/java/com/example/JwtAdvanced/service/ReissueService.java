@@ -3,7 +3,9 @@ package com.example.JwtAdvanced.service;
 import com.example.JwtAdvanced.dto.CustomUserDetails;
 import com.example.JwtAdvanced.entity.Refresh;
 import com.example.JwtAdvanced.jwt.JWTUtil;
+import com.example.JwtAdvanced.redis.RefreshToken;
 import com.example.JwtAdvanced.repository.RefreshRepository;
+import com.example.JwtAdvanced.repository.RefreshTokenRepository;
 import io.jsonwebtoken.ExpiredJwtException;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
@@ -17,11 +19,14 @@ import java.util.Date;
 @Service
 public class ReissueService {
     private final JWTUtil jwtUtil;
-    private final RefreshRepository refreshRepository;
+    //private final RefreshRepository refreshRepository;
+    private final RefreshTokenRepository refreshTokenRepository;
 
-    public ReissueService(JWTUtil jwtUtil, RefreshRepository refreshRepository) {
+    public ReissueService(JWTUtil jwtUtil, RefreshTokenRepository refreshTokenRepository) {
         this.jwtUtil = jwtUtil;
-        this.refreshRepository = refreshRepository;
+        //this.refreshRepository = refreshRepository;
+
+        this.refreshTokenRepository = refreshTokenRepository;
     }
 
     public ResponseEntity<String> reissue(HttpServletRequest request, HttpServletResponse response) {
@@ -41,12 +46,18 @@ public class ReissueService {
             return ResponseEntity.badRequest().body("Refresh token is empty");
         }
 
-        //refresh 토큰 만료여부 체크
+        //refresh 토큰 데이터베이스에 저장여부 체크
+        RefreshToken refreshToken=refreshTokenRepository.findById(refresh).orElse(null);
+        if(refreshToken==null){
+            return ResponseEntity.badRequest().body("Refresh token is invalid");
+        }
+        //refresh 토큰 만료 여부 체크
         try{
             jwtUtil.isExpired(refresh);
         }catch(ExpiredJwtException e){
             return ResponseEntity.badRequest().body("refresh token expired");
         }
+
 
         //토큰이 refresh인지 확인(발급시 페이로드에 명시)
         String category=jwtUtil.getCategory(refresh);
@@ -63,8 +74,15 @@ public class ReissueService {
         String newJwt=jwtUtil.createJwt("access",username, role, userId, 600000L);
         String newRefresh=jwtUtil.createJwt("refresh", username, role,userId, 86400000L);
 
+        //redis 사용시
+        refreshTokenRepository.delete(refreshToken);
+        RefreshToken newRefreshToken=new RefreshToken(newRefresh, userId);
+        refreshTokenRepository.save(newRefreshToken);
+
+        /* mySQL 사용시
         refreshRepository.deleteByRefresh(refresh);
         addRefreshEntity(username,userId,newRefresh, 8640000L);
+        */
 
         //response
         response.setHeader("access", newJwt);
@@ -85,6 +103,8 @@ public class ReissueService {
         return cookie;
     }
 
+    /*
+    //mySQL refreshRepository 사용시
     private void addRefreshEntity(String username,Long userId,String newRefresh,Long expiredMs){
         Date date = new Date(System.currentTimeMillis() + expiredMs);
 
@@ -96,5 +116,7 @@ public class ReissueService {
 
         refreshRepository.save(refresh);
     }
+    */
+
 }
 

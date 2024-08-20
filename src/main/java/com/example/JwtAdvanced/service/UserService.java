@@ -35,4 +35,8 @@ public class UserService {
         userRepository.save(data);
         return true;
     }
+
+    public String userInfo(String username) {
+        return username;
+    }
 }
