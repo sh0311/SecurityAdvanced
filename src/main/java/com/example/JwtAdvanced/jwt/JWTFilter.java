@@ -57,10 +57,13 @@ public class JWTFilter extends OncePerRequestFilter {
 
         String username=jwtUtil.getUsername(accessToken);
         String role=jwtUtil.getRole(accessToken);
+        Long user_id=jwtUtil.getUserId(accessToken);
 
+        // @AuthenticaionPrincipal이용해 로그인한 유저 정보 이용하려면 이용하고자 하는 정보들도 set해서 user객체 저장해야한다!
         User userEntity=new User();
         userEntity.setUsername(username);
         userEntity.setRole(role);
+        userEntity.setId(user_id);
         CustomUserDetails userDetails = new CustomUserDetails(userEntity);
 
         Authentication authToken = new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());

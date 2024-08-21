@@ -30,6 +30,8 @@ public class UserController {
     @GetMapping("/userTest")
     public String userInfo(@AuthenticationPrincipal CustomUserDetails userDetails){
         System.out.println(userDetails.getUsername());
-        return userService.userInfo(userDetails.getUsername());
+        System.out.println(userDetails.getId());
+
+        return userService.userInfo(userDetails.getUsername(), userDetails.getId());
     }
 }
