@@ -36,7 +36,7 @@ public class UserService {
         return true;
     }
 
-    public String userInfo(String username) {
-        return username;
+    public String userInfo(String username, Long userId) {
+        return username+userId.toString();
     }
 }
